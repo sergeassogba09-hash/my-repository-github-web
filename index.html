@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Syndicat</title>
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="header-left">
+        <img src="logo.webp" alt="Logo Le Syndicat" />
+        <div class="header-text"></div>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="searchTag" placeholder="Filtrer par mot-clé..." />
+      </div>
+      <div class="social-icons">
+        <a href="https://facebook.com" target="_blank">
+          <img src="facebook-icon.webp" alt="Facebook" />
+        </a>
+        <a href="https://whatsapp.com" target="_blank">
+          <img src="whatsapp_icon.webp" alt="WhatsApp" />
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="form-section">
+      <h2> Proposer une vidéo citoyenne</h2>
+      <form id="videoForm">
+        <input type="text" name="titre" placeholder="Titre de la vidéo" required />
+        <input type="url" name="source" placeholder="Lien MP4 ou YouTube" required />
+        <textarea name="description" placeholder="Description de l’initiative" required></textarea>
+        <input type="text" name="tags" placeholder="Tags (séparés par des virgules)" />
+        <button type="submit">Envoyer</button>
+      </form>
+      <p id="formMessage"></p>
+    </section>
+
+    <div class="container" id="videos"></div>
+    <p id="noResults" class="no-results">🤷‍♂️ Aucun résultat trouvé.</p>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Thanos</p>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>
