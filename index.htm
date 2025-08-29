@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <title>Chantier Citoyen</title>
+</head>
+<body>
+
+  <!-- 🧭 En-tête -->
+  <header>
+    <div class="header-content">
+      <div class="header-left">
+        <img src="assets/images/icons/logo.webp" alt="Logo JCI-AGP" />
+        <div class="header-text">
+          <h1>Chantier Citoyen</h1>
+          <p>Mobiliser. Documenter. Transformer.</p>
+        </div>
+      </div>
+      <div class="search-bar">
+        <input type="text" id="searchTag" placeholder="Rechercher une action..." />
+      </div>
+    </div>
+  </header>
+
+  <!-- 📤 Bouton pour afficher le formulaire -->
+  <button id="toggleForm">Publier une action citoyenne</button>
+
+  <!-- 📰 Conteneur des articles -->
+  <div class="container" id="articles"></div>
+
+  <!-- 📝 Formulaire de contribution -->
+  <section id="contribuer" class="contribuer-section" style="display: none;">
+    <h2>Contribuer à la plateforme</h2>
+    <form id="contribForm">
+      <input type="file" id="imageUpload" accept="image/*" />
+      <img id="preview" src="" alt="Prévisualisation" style="max-width:100%; margin-top:1rem;" />
+      <input type="text" id="titre" placeholder="Titre de l'action" required />
+      <textarea id="description" placeholder="Description..." required></textarea>
+      <input type="text" id="tags" placeholder="Tags (séparés par des virgules)" />
+      <button type="submit">Envoyer</button>
+    </form>
+  </section>
+
+  <!-- 📣 Pied de page -->
+  <footer>
+    <p>Suivez-nous sur les réseaux sociaux</p>
+    <div class="social-icons">
+      <a href="https://facebook.com" target="_blank">
+        <img src="assets/images/icons/facebook-icon.webp" alt="Facebook" />
+      </a>
+      <a href="https://twitter.com" target="_blank">
+        <img src="assets/images/icons/tweeter-icon.png" alt="Twitter" />
+      </a>
+      <a href="https://instagram.com" target="_blank">
+        <img src="assets/images/icons/instagram-icon.png" alt="Instagram" />
+      </a>
+      <a href="https://linkedin.com" target="_blank">
+        <img src="assets/images/icons/linkedin_icon.webp" alt="LinkedIn" />
+      </a>
+    </div>
+    <p style="margin-top:1rem;">&copy; 2025 Chantier Citoyen – Tous droits réservés</p>
+  </footer>
+
+  <!-- 🚀 Script principal -->
+  <script src="assets/js/main.js"></script>
+</body>
+</html>
