@@ -1,54 +1,358 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>e-Tube</title>
-  <link rel="icon" href="logo.PNG" />
+  <meta charset="UTF-8">
+  <title>Suivi Énergie</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007bff">
+    <link rel="icon" type="image/png" href="logo.png">
 
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com" rel="preconnect">
-  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f0f2f5;
+      color: #333;
+    }
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="style.css" />
+    header {
+      background-color: #007bff;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(147, 47, 47, 0.1);
+    }
+
+    h2 {
+      margin-top: 30px;
+      font-size: 20px;
+      color: #007bff;
+    }
+
+    label {
+      display: block;
+      margin: 10px 0;
+      font-weight: 500;
+    }
+
+    input {
+      width: 93%;
+      padding: 8px;
+      margin-top: 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background: #fafafa;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f5f5f5;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      margin-top: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    #kpi {
+      margin: 15px 0;
+      font-size: 16px;
+      color: #444;
+    }
+
+    #notification {
+      padding: 12px;
+      margin-top: 20px;
+      border-left: 5px solid;
+      border-radius: 4px;
+      display: none;
+      font-weight: 500;
+    }
+
+    canvas {
+      margin-top: 20px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+    }
+    .container {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  border-left: 4px solid #007bff;
+  margin-top: 20px;
+    }
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 14px;
+      color: #666;
+      background: #f9f9f9;
+      border-top: 1px solid #eee;
+    }
+    /* Responsive layout */
+main {
+  width: 95%;
+  max-width: 1000px;
+  margin: 30px auto;
+  padding: 20px;
+  background: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* Table responsive */
+table {
+  width: 100%;
+  overflow-x: auto;
+  display: block;
+}
+
+/* Input responsive */
+input, select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Button responsive */
+button {
+  width: 100%;
+  max-width: 300px;
+}
+
+/* Responsive canvas */
+canvas {
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* Responsive typography */
+h2 {
+  font-size: 1.2rem;
+}
+
+@media screen and (max-width: 600px) {
+  header {
+    font-size: 20px;
+    padding: 15px;
+  }
+
+  h2 {
+    font-size: 1rem;
+  }
+
+  th, td {
+    font-size: 0.9rem;
+    padding: 8px;
+  }
+
+  #kpi {
+    font-size: 14px;
+  }
+
+  button {
+    font-size: 14px;
+    padding: 6px 12px;
+  }
+}
+
+  </style>
 </head>
-
 <body>
-  <header>
-    <div class="header-content">
-      <div class="header-left">
-        <img src="logo.PNG" alt="Logo" />
-      </div>
-      <div class="search-bar">
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="searchInput" placeholder="Rechercher un contenu..." />
-        </div>
-        <button id="toggleFormBtn"> Ajouter une vidéo</button>
-      </div>
-    </div>
-  </header>
-
-  <div id="formOverlay" class="form-overlay" style="display: none;">
-    <div class="form-popup">
-      <form id="postForm">
-        <input type="file" id="mediaFile" accept="video/mp4" />
-        <input type="text" id="title" placeholder="Titre de la vidéo" required />
-        <textarea id="description" placeholder="Description" required></textarea>
-        <div class="form-buttons">
-          <button type="submit">Publier</button>
-          <button type="button" id="cancelBtn">Annuler</button>
-        </div>
-      </form>
-      <div id="formMessage"></div>
-    </div>
+  <header>Suivi de Consommation Électrique</header>
+  <main>
+  <!-- 🔹 Conteneur 1 : Facture -->
+  <div class="container">
+    <h2>📄 Facture mensuelle</h2>
+    <label>Montant (FCFA): 
+      <input type="number" id="billAmount" value="0" oninput="updateGraph()">
+    </label>
+    <label>Tarif (FCFA/kWh): 
+      <input type="number" id="tariff" value="100" oninput="updateGraph()">
+    </label>
   </div>
 
-  <section class="container" id="contentContainer"></section>
-  <div class="no-results" id="noResults">Aucun contenu trouvé.</div>
+  <!-- 🔹 Conteneur 2 : Appareils -->
+  <div class="container">
+    <h2>🔌 Appareils</h2>
+    <div id="kpi">
+      <strong>Nombre d'appareils :</strong> <span id="deviceCount">0</span> |
+      <strong>Consommation estimée totale :</strong> <span id="totalConsumption">0.00</span> kWh
+    </div>
+    <table id="deviceTable">
+      <thead>
+        <tr>
+          <th>Nom</th>
+          <th>Puissance (W)</th>
+          <th>Durée (h/j)</th>
+          <th>Jours actifs</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button onclick="addDevice()">Ajouter un appareil</button>
+  </div>
 
-  <script src="script.js"></script>
+  <!-- 🔹 Conteneur 3 : Graphique -->
+  <div class="container">
+    <h2>📊 Graphique de consommation</h2>
+    <canvas id="consumptionChart"></canvas>
+    <div id="notification"></div>
+  </div>
+</main>
+
+
+  <footer>
+    &copy by <strong>AssoTech</strong> - Tous droits réservés.
+  </footer>
+
+  <script>
+    let chart;
+
+    function addDevice() {
+      const table = document.querySelector("#deviceTable tbody");
+      const row = document.createElement("tr");
+
+      row.innerHTML = `
+        <td><input type="text" placeholder="Ex: Frigo" oninput="updateGraph()"></td>
+        <td><input type="number" placeholder="Ex: 150" oninput="updateGraph()"></td>
+        <td><input type="number" placeholder="Ex: 5" oninput="updateGraph()"></td>
+        <td><input type="number" placeholder="Ex: 30" oninput="updateGraph()"></td>
+        <td><button onclick="removeDevice(this)">🗑️</button></td>
+      `;
+
+      table.appendChild(row);
+      updateGraph();
+    }
+
+    function removeDevice(btn) {
+      btn.closest("tr").remove();
+      updateGraph();
+    }
+
+    function updateGraph() {
+      const rows = document.querySelectorAll("#deviceTable tbody tr");
+      const tariff = parseFloat(document.getElementById("tariff").value);
+      const bill = parseFloat(document.getElementById("billAmount").value);
+
+      const labels = [];
+      const estimated = [];
+      let totalEstimated = 0;
+
+      rows.forEach(row => {
+        const name = row.cells[0].querySelector("input").value;
+        const power = parseFloat(row.cells[1].querySelector("input").value);
+        const hours = parseFloat(row.cells[2].querySelector("input").value);
+        const days = parseFloat(row.cells[3].querySelector("input").value);
+
+        if (name && power && hours && days) {
+          const consumption = (power * hours * days) / 1000;
+          labels.push(name);
+          estimated.push(consumption);
+          totalEstimated += consumption;
+        }
+      });
+
+      renderChart(labels, estimated, bill / tariff);
+      showNotification(totalEstimated, bill / tariff);
+      updateKPI(rows.length, totalEstimated);
+    }
+
+    function renderChart(labels, estimated, real) {
+      const ctx = document.getElementById("consumptionChart").getContext("2d");
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Consommation estimée (kWh)",
+              data: estimated,
+              backgroundColor: "rgba(54, 162, 235, 0.7)"
+            },
+            {
+              label: "Consommation réelle (facture)",
+              data: Array(estimated.length).fill(real),
+              backgroundColor: "rgba(255, 99, 132, 0.7)"
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function showNotification(estimated, real) {
+      const notif = document.getElementById("notification");
+      const ecart = Math.abs(estimated - real);
+      const ecartPercent = (ecart / real) * 100;
+
+      notif.style.display = "block";
+      notif.textContent = `Écart : ${ecart.toFixed(2)} kWh (${ecartPercent.toFixed(1)}%) entre estimation (${estimated.toFixed(2)}) et facture (${real.toFixed(2)}).`;
+
+      if (ecartPercent <= 10) {
+        notif.style.backgroundColor = "#ddffdd";
+        notif.style.borderLeft = "5px solid green";
+      } else if (ecartPercent <= 20) {
+        notif.style.backgroundColor = "#fff4cc";
+        notif.style.borderLeft = "5px solid orange";
+      } else {
+        notif.style.backgroundColor = "#ffdddd";
+        notif.style.borderLeft = "5px solid red";
+      }
+    }
+
+    function updateKPI(count, totalEstimated) {
+      document.getElementById("deviceCount").textContent = count;
+      document.getElementById("totalConsumption").textContent = totalEstimated.toFixed(2);
+    }
+
+    window.onload = updateGraph;
+  </script>
+  <script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js")
+      .then(() => console.log("✅ Service Worker enregistré"))
+      .catch(error => console.error("❌ Erreur SW:", error));
+  }
+</script>
+
 </body>
 </html>
