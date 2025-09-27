@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Calculateur Solaire</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Google Fonts : Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Favicon classique -->
+<link rel="icon" type="image/png" sizes="32x32" href="logo.png">
+<link rel="icon" type="image/png" sizes="16x16" href="logo.png">
+
+<!-- Pour iOS/Android (PWA) -->
+<link rel="apple-touch-icon" sizes="180x180" href="logo.png">
+
+<!-- Pour PWA manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563eb">
+
+</head>
+<body>
+<header class="header">
+  <h1>⚡ Calculateur Solaire</h1>
+  <div class="menu">
+    <span class="menu-toggle" id="menuToggle">☰</span>
+    <div class="menu-panel" id="menuPanel">
+      <label class="switch">
+  <input type="checkbox" id="themeToggle">
+  <span class="slider round"></span>
+</label>
+  <button id="shareBtn">Partager app</button>
+  <button id="guideBtn">Guide</button>
+  <button id="privacyBtn">Politique de confidentialité</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Paramètres -->
+  <section class="panel">
+    <h2>Paramètres du système</h2>
+    <div class="params-grid">
+      <label>
+        Ville
+        <select id="ville">
+          <option value="lome">Lomé</option>
+          <option value="kara">Kara</option>
+          <option value="dapaong">Dapaong</option>
+          <option value="atacora">Atacora</option>
+          <option value="cotonou">Cotonou</option>
+          <option value="sokode">Sokodé</option>
+          <option value="kpalime">Kpalimé</option>
+          <option value="tsevie">Tsévié</option>
+        </select>
+      </label>
+      <label>
+        Rendement global (0.6–0.95)
+        <input type="number" id="rendement" step="0.01" min="0.6" max="0.95" placeholder="0.8"/>
+      </label>
+      <label>
+        DOD (0.3–0.9)
+        <input type="number" id="DOD" step="0.01" min="0.3" max="0.9" placeholder="0.6"/>
+      </label>
+      <label>
+        Tension du système (V)
+        <select id="tensionBatt">
+          <option value="12">12</option>
+          <option value="24">24</option>
+          <option value="48">48</option>
+        </select>
+      </label>
+      <label>
+        Jours d’autonomie
+        <input type="number" id="joursAutonomie" min="1" max="7" placeholder="2"/>
+      </label>
+      <label>
+        Distance installation (m)
+        <input type="number" id="distance" min="0" step="0.5" placeholder="10"/>
+      </label>
+      <label>
+        Local technique
+        <select id="localTech">
+          <option value="oui">Oui</option>
+          <option value="non">Non</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <!-- Appareils -->
+  <section class="panel">
+    <h2>Appareils à alimenter</h2>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nom</th>
+          <th>Puissance (W)</th>
+          <th>Heures/jour</th>
+          <th>Nombre</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="appareilsBody"></tbody>
+    </table>
+   <div class="actions">
+  <button id="addRow">Ajouter un appareil</button>
+  <button id="calculate">Calculer</button>
+  <button id="payBtn">Paiement</button>
+</div>
+
+<!-- Overlay paiement bloquant -->
+<div id="paymentOverlay" class="overlay" style="display:none;">
+  <div class="overlay-content pay-form">
+    <button class="close-btn" id="closeOverlay">&times;</button>
+    <h2>Paiement requis</h2>
+    <form id="overlayPayForm">
+      <label>Nom complet
+        <input type="text" placeholder="Entrez votre nom" required>
+      </label>
+      <label>Numéro Mobile Money
+        <input type="text" placeholder="Ex: 90 00 00 00" required>
+      </label>
+      <label>Méthode de paiement
+        <select required>
+          <option value="">-- Choisir --</option>
+          <option value="tmoney">T‑Money</option>
+          <option value="flooz">Flooz</option>
+        </select>
+      </label>
+      <button type="submit" class="pay-btn">💳 Valider le paiement</button>
+    </form>
+  </div>
+</div>
+
+
+  <!-- Dashboard -->
+  <section class="panel">
+    <h2>Dashboard</h2>
+    <div class="dashboard">
+      <div class="card"><div class="label">Ville (h/j)</div><div class="value" id="cardVille">—</div></div>
+      <div class="card"><div class="label">Énergie/jour</div><div class="value" id="cardEnergie">—</div></div>
+      <div class="card"><div class="label">Puissance panneaux</div><div class="value" id="cardPanneaux">—</div></div>
+      <div class="card"><div class="label">Capacité batterie</div><div class="value" id="cardBatterie">—</div></div>
+      <div class="card"><div class="label">Puissance onduleur</div><div class="value" id="cardOnduleur">—</div></div>
+    </div>
+    <div class="charts">
+      <div class="card">
+        <h3>Consommation par appareil (Wh/j)</h3>
+        <canvas id="barChart"></canvas>
+      </div>
+      <div class="card">
+        <h3>Répartition de la consommation</h3>
+        <canvas id="pieChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dimensionnement minutieux -->
+  <section class="panel" id="dimensionnementSection" style="display:none;">
+    <h2>Dimensionnement minutieux</h2>
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr><th>Catégorie</th><th>Paramètre</th><th>Valeur</th><th>Détails</th></tr>
+        </thead>
+        <tbody id="dimensionnementBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- Modal pancarte -->
+<div class="modal" id="resultModal">
+  <div class="modal-content">
+    <button class="close" id="closeModal">×</button>
+    <p>Pour obtenir un dimensionnement plus minutieux et détaillé, cliquez sur “Obtenir”.</p>
+    <button id="modalGetProDesign">Obtenir</button>
+  </div>
+</div>
+
+<!-- Notification toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Modal Guide -->
+<div id="guideModal" class="overlay" style="display:none;">
+  <div class="overlay-content">
+    <!-- Bouton de fermeture (croix) -->
+    <button class="close-btn" id="closeGuide">&times;</button>
+    <h2>Guide d’utilisation</h2>
+    <p><strong>Ville :</strong> Choisissez la ville pour appliquer l’ensoleillement moyen local.</p>
+    <p><strong>Rendement global :</strong> Facteur de pertes (0.6 à 0.95). Plus il est élevé, plus le système est efficace.</p>
+    <p><strong>DOD :</strong> Profondeur de décharge des batteries (0.3 à 0.9). Exemple : 0.6 = 60% de décharge max.</p>
+    <p><strong>Tension du système :</strong> Choisissez 12V, 24V ou 48V selon la taille de l’installation.</p>
+    <p><strong>Jours d’autonomie :</strong> Nombre de jours que le système doit fonctionner sans soleil.</p>
+    <p><strong>Distance installation :</strong> Distance entre panneaux, batteries et onduleur (impacte la section des câbles).</p>
+    <p><strong>Local technique :</strong> Oui si les équipements sont dans une pièce dédiée (ajoute de la longueur de câbles).</p>
+    <p><strong>Appareils :</strong> Ajoutez vos appareils avec leur puissance (W), durée d’utilisation (h/jour) et nombre.</p>
+  </div>
+</div>
+
+<!-- Modal Politique de Confidentialité -->
+<div id="privacyModal" class="overlay" style="display:none;">
+  <div class="overlay-content privacy-content">
+    <!-- Bouton de fermeture (croix) -->
+    <button class="close-btn" id="closePrivacy">&times;</button>
+    <h2>Politique de Confidentialité</h2>
+    <p><strong>Dernière mise à jour :</strong> Septembre 2025</p>
+    <p>Votre confidentialité est importante pour nous. Cette politique explique comment notre application <em>Calculateur Solaire</em> collecte, utilise et protège vos informations.</p>
+    <h3>1. Informations collectées</h3>
+    <p>Nom, numéro de téléphone, paramètres techniques saisis dans l’application. Aucune donnée sensible n’est stockée.</p>
+    <h3>2. Utilisation</h3>
+    <p>Amélioration de l’expérience utilisateur, fourniture des résultats de calcul, traitement des paiements via partenaires sécurisés.</p>
+    <h3>3. Partage</h3>
+    <p>Jamais vendues. Partage uniquement avec partenaires de paiement pour exécuter la transaction.</p>
+    <h3>4. Sécurité</h3>
+    <p>Données protégées par des mesures techniques. Paiements traités via plateformes sécurisées (PayDunya, Flutterwave, etc.).</p>
+    <h3>5. Vos droits</h3>
+    <p>Accès, modification, suppression de vos données. Retrait du consentement possible à tout moment.</p>
+    <h3>6. Contact</h3>
+    <p>📧 sergeassogb09@gmail.com</p>
+  </div>
+</div>
+
+
+<footer class="footer"><small>&copy AssoTech — dimensionnement avancé basé sur vos données</small></footer>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="script.js"></script>
+
+</body>
+</html>
