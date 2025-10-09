@@ -1,10 +1,9 @@
 const CACHE_NAME = 'compteur-cache-v1';
 const urlsToCache = [
-  './',
-  './index.html',
-  './style.css',
-  './app.js',
-  './manifest.json'
+  '/',
+  '/index.html',
+  '/style.css',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', event => {
@@ -16,3 +15,4 @@ self.addEventListener('fetch', event => {
     caches.match(event.request).then(response => response || fetch(event.request))
   );
 });
+
