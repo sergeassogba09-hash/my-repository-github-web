@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>GeoCapture</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
+  <style>
+    body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:#f5f7fa; }
+    header { background:#2c3e50; color:white; padding:15px; text-align:center; position:fixed; top:0; left:0; right:0; z-index:1000; }
+    nav { display:flex; gap:10px; margin:10px; justify-content:center; margin-top:60px; }
+    nav a { padding:8px 12px; background:#2c3e50; color:white; border-radius:4px; text-decoration:none; }
+    nav a:hover { background:#34495e; }
+    #map { width:100%; height:100vh; }
+    #takePhoto { position:fixed; bottom:20px; right:20px; z-index:2000; background:#2c3e50; color:white; border:none; border-radius:50%; width:60px; height:60px; font-size:1.5em; cursor:pointer; }
+    #takePhoto:hover { background:#34495e; }
+    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:3000; }
+    .modal-content { background:white; padding:20px; border-radius:8px; max-width:500px; width:90%; text-align:center; }
+    video { width:100%; max-width:400px; border:1px solid #ccc; border-radius:6px; }
+    .modal img { max-width:100%; border-radius:6px; margin:10px 0; }
+    .modal-actions { display:flex; justify-content:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+    button.action { background:#2c3e50; color:white; border:none; border-radius:4px; padding:10px 15px; cursor:pointer; }
+    button.action:hover { background:#34495e; }
+    button.cancel { background:#e74c3c; }
+    button.cancel:hover { background:#c0392b; }
+    #takePhoto, #homeBtn {
+  position:fixed;
+  bottom:20px;
+  z-index:2000;
+  background:#2c3e50;
+  color:white;
+  border:none;
+  border-radius:50%;
+  width:60px;
+  height:60px;
+  font-size:1.5em;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none; /* pour le lien */
+}
+
+#takePhoto:hover, #homeBtn:hover {
+  background:#34495e;
+}
+
+/* Positionnement côte à côte */
+#takePhoto { right:20px; }
+#homeBtn { right:90px; } /* décalé à gauche du bouton photo */
+  </style>
+</head>
+<body>
+  <header>MAP</header>
+  <!-- Carte -->
+  <div id="map"></div>
+
+  <!-- Bouton flottant pour la caméra -->
+<button id="takePhoto">📷</button>
+
+<!-- Bouton flottant pour l'accueil -->
+<a href="index.html" id="homeBtn">🏠</a>
+
+  <!-- Modal 1 : Capture -->
+  <div id="captureModal" class="modal">
+    <div class="modal-content">
+      <video id="video" autoplay playsinline></video>
+      <div class="modal-actions">
+        <button id="captureBtn" class="action">Capturer</button>
+        <button id="cancelBtn" class="action cancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2 : Enregistrement -->
+  <div id="saveModal" class="modal">
+    <div class="modal-content">
+      <img id="previewImg" src="" alt="Prévisualisation"/>
+      <pre id="metaData"></pre>
+      <div class="modal-actions">
+        <button id="closeBtn" class="action">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+  <script>
+    let savedData = JSON.parse(localStorage.getItem("captures")) || [];
+
+    // --- Carte ---
+    const map = L.map("map").setView([0,0], 2);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(map);
+    const clusterGroup = L.markerClusterGroup();
+    map.addLayer(clusterGroup);
+
+    function refreshMap() {
+      clusterGroup.clearLayers();
+      savedData.forEach(d=>{
+        if(d.lat && d.lng){
+          clusterGroup.addLayer(L.marker([d.lat,d.lng]).bindPopup(`<b>${d.name}</b><br>${d.date}`));
+        }
+      });
+    }
+    refreshMap();
+
+    // --- Caméra & Modals ---
+    const takePhotoBtn=document.getElementById("takePhoto");
+    const captureModal=document.getElementById("captureModal");
+    const saveModal=document.getElementById("saveModal");
+    const video=document.getElementById("video");
+    const captureBtn=document.getElementById("captureBtn");
+    const cancelBtn=document.getElementById("cancelBtn");
+    const closeBtn=document.getElementById("closeBtn");
+    const previewImg=document.getElementById("previewImg");
+    const metaData=document.getElementById("metaData");
+    let stream;
+
+    async function startCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = stream;
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      }
+    }
+
+    takePhotoBtn.addEventListener("click", () => {
+      captureModal.style.display = "flex";
+      startCamera();
+    });
+
+    captureBtn.addEventListener("click", () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0);
+
+      const now = new Date();
+      const filename = "photo_" + now.toISOString().replace(/[:.]/g, "-") + ".png";
+      const dateStr = now.toLocaleString();
+      const imageData = canvas.toDataURL("image/png");
+
+      // Fermer modal capture et ouvrir modal enregistrement
+      captureModal.style.display = "none";
+      saveModal.style.display = "flex";
+      previewImg.src = imageData;
+      metaData.textContent = "Chargement des métadonnées...";
+
+      let entry = { name: filename, date: dateStr, lat: null, lng: null, image: imageData };
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            entry.lat = pos.coords.latitude;
+            entry.lng = pos.coords.longitude;
+            metaData.textContent = `Nom: ${filename}\nDate: ${dateStr}\nCoord: ${entry.lat}, ${entry.lng}`;
+            saveEntry(entry);
+          },
+          err => {
+            metaData.textContent = `Nom: ${filename}\nDate: ${dateStr}\nCoord: indisponibles (${err.message})`;
+            saveEntry(entry);
+          }
+        );
+      } else {
+        metaData.textContent = `Nom: ${filename}\nDate: ${dateStr}\nCoord: non supportées`;
+        saveEntry(entry);
+      }
+    });
+
+    cancelBtn.addEventListener("click", () => {
+      captureModal.style.display = "none";
+      if (stream) stream.getTracks().forEach(track => track.stop());
+    });
+
+    closeBtn.addEventListener("click", () => {
+      saveModal.style.display = "none";
+      captureModal.style.display = "flex"; // retour caméra
+    });
+
+    function saveEntry(entry) {
+      savedData.push(entry);
+      localStorage.setItem("captures", JSON.stringify(savedData));
+      refreshMap();
+      console.log("Photo enregistrée automatiquement:", entry);
+    }
+  </script>
+</body>
+</html>
