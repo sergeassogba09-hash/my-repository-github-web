@@ -1,1 +1,264 @@
-<h1>salut c'est ma web page</h1>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>GeoCapture</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Leaflet core -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- MarkerCluster plugin CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"
+  />
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2c3e50">
+  <link rel="icon" type="image/png" sizes="32x32" href="logo.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="logo.png">
+  <link rel="icon" href="logo.png" type="image/svg+xml">
+  <style>
+    body { font-family: "Segoe UI", Arial, sans-serif; margin:0; padding:0; background:#f5f7fa; color:#333; display:flex; flex-direction:column; align-items:center; }
+    header { width:100%; padding:15px; background:#2c3e50; color:white; text-align:center; font-size:1.2em; }
+    main { width:100%; max-width:700px; padding:15px; display:flex; flex-direction:column; align-items:center; }
+    video { width:100%; max-width:400px; border:1px solid #ccc; border-radius:6px; margin:10px 0; }
+    button { background:#2c3e50; color:white; border:none; border-radius:4px; padding:12px 20px; margin:10px 10px 10px 0; font-size:1em; cursor:pointer; }
+    button:hover { background:#34495e; }
+    #map { width:100%; height:300px; margin-top:15px; border-radius:6px; }
+    #gallery { margin-top:20px; width:100%; }
+    .photo-card { display:flex; align-items:center; background:white; border:1px solid #ddd; border-radius:6px; padding:10px; margin-bottom:10px; }
+    .photo-card img { width:80px; height:60px; object-fit:cover; border-radius:4px; margin-right:10px; }
+    .photo-info { flex:1; text-align:left; font-size:0.85em; }
+    .delete-btn { background:#e74c3c; border:none; color:white; padding:6px 10px; border-radius:4px; cursor:pointer; }
+    .delete-btn:hover { background:#c0392b; }
+    /* Modal */
+    .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000; }
+    .modal-content { background:white; padding:20px; border-radius:8px; max-width:500px; width:90%; text-align:center; }
+    .modal img { max-width:100%; border-radius:6px; margin-bottom:10px; }
+    .modal-actions { display:flex; justify-content:center; gap:10px; margin-top:10px; }
+    /* Map controls container */
+    .map-controls { width:100%; max-width:700px; display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .toggle { background:#7f8c8d; }
+    .toggle.active { background:#27ae60; }
+  </style>
+</head>
+<body>
+  <header>📸 GeoCapture</header>
+  <main>
+    <video id="video" autoplay playsinline></video>
+    <button id="takePhoto">Prendre une photo</button>
+    <div class="map-controls">
+      <button id="toggleClusters" class="toggle active">Clusters: On</button>
+      <button id="togglePath" class="toggle active">Parcours: On</button>
+    </div>
+    <div id="map"></div>
+    <h3>📂 Galerie</h3>
+    <div id="gallery"></div>
+  </main>
+
+  <!-- Modal de prévisualisation -->
+  <div id="previewModal" class="modal">
+    <div class="modal-content">
+      <img id="previewImg" src="" alt="Prévisualisation" />
+      <pre id="metaData">Chargement des métadonnées...</pre>
+      <div class="modal-actions">
+        <button id="saveBtn" disabled>Enregistrer</button>
+        <button id="cancelBtn">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet core -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- MarkerCluster plugin JS -->
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+  <script>
+    // Elements
+    const video = document.getElementById("video");
+    const takePhotoBtn = document.getElementById("takePhoto");
+    const gallery = document.getElementById("gallery");
+    const modal = document.getElementById("previewModal");
+    const previewImg = document.getElementById("previewImg");
+    const metaData = document.getElementById("metaData");
+    const saveBtn = document.getElementById("saveBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const toggleClustersBtn = document.getElementById("toggleClusters");
+    const togglePathBtn = document.getElementById("togglePath");
+
+    // State
+    let savedData = JSON.parse(localStorage.getItem("captures")) || [];
+    let tempEntry = null;
+    let clustersEnabled = true;
+    let pathEnabled = true;
+
+    // Map setup
+    const map = L.map("map").setView([0, 0], 2);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap" }).addTo(map);
+
+    // Layer holders
+    let clusterGroup = L.markerClusterGroup();
+    let markerLayer = L.layerGroup(); // fallback when clusters are off
+    let pathLine = L.polyline([], { color: "#27ae60", weight: 3 });
+
+    map.addLayer(clusterGroup);
+    map.addLayer(markerLayer);
+    map.addLayer(pathLine);
+
+    // Camera
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => { alert("Erreur caméra : " + err); });
+
+    // Map refresh with clustering and path
+    function refreshMap() {
+      // Clear previous markers
+      clusterGroup.clearLayers();
+      markerLayer.clearLayers();
+
+      // Add markers
+      savedData.forEach(d => {
+        const marker = L.marker([d.lat, d.lng]).bindPopup(`<b>${d.name}</b><br>${d.date}`);
+        if (clustersEnabled) {
+          clusterGroup.addLayer(marker);
+        } else {
+          markerLayer.addLayer(marker);
+        }
+      });
+
+      // Update path from chronological order
+      const coords = savedData.map(d => [d.lat, d.lng]);
+      pathLine.setLatLngs(pathEnabled ? coords : []);
+    }
+
+    // Gallery refresh
+    function refreshGallery() {
+      gallery.innerHTML = "";
+      savedData.forEach((d, index) => {
+        const card = document.createElement("div");
+        card.className = "photo-card";
+        card.innerHTML = `
+          <img src="${d.image}" alt="${d.name}">
+          <div class="photo-info">
+            <b>${d.name}</b><br>${d.date}<br>[${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}]
+          </div>
+          <button class="delete-btn" data-index="${index}">Supprimer</button>
+        `;
+        gallery.appendChild(card);
+      });
+
+      // Deletion
+      document.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", e => {
+          const idx = Number(e.target.getAttribute("data-index"));
+          savedData.splice(idx, 1);
+          localStorage.setItem("captures", JSON.stringify(savedData));
+          refreshGallery();
+          refreshMap();
+        });
+      });
+    }
+
+    refreshGallery();
+    refreshMap();
+
+    // Take photo -> show modal with metadata
+    takePhotoBtn.addEventListener("click", () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const now = new Date();
+      const filename = "photo_" + now.toISOString().replace(/[:.]/g, "-") + ".png";
+      const dateStr = now.toLocaleString();
+      const imageData = canvas.toDataURL("image/png");
+
+      modal.style.display = "flex";
+      previewImg.src = imageData;
+      metaData.textContent = "Chargement des métadonnées...";
+      saveBtn.disabled = true;
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            tempEntry = { name: filename, date: dateStr, lat, lng, image: imageData };
+            metaData.textContent = `Nom: ${filename}\nDate: ${dateStr}\nCoord: ${lat}, ${lng}`;
+            saveBtn.disabled = false;
+          },
+          err => {
+            metaData.textContent = "Erreur GPS : " + err.message;
+          }
+        );
+      } else {
+        metaData.textContent = "La géolocalisation n'est pas supportée.";
+      }
+    });
+
+    // Save photo -> update map and gallery, close modal
+    saveBtn.addEventListener("click", () => {
+      if (!tempEntry) return;
+      savedData.push(tempEntry);
+      localStorage.setItem("captures", JSON.stringify(savedData));
+      refreshGallery();
+      refreshMap();
+
+      // Fit map to path or last point for context
+      if (savedData.length === 1) {
+        map.setView([tempEntry.lat, tempEntry.lng], 15);
+      } else if (pathEnabled && savedData.length >= 2) {
+        const bounds = L.latLngBounds(savedData.map(d => [d.lat, d.lng]));
+        map.fitBounds(bounds, { padding: [20, 20] });
+      }
+
+      modal.style.display = "none";
+      tempEntry = null;
+    });
+
+    // Cancel modal
+    cancelBtn.addEventListener("click", () => {
+      modal.style.display = "none";
+      tempEntry = null;
+    });
+
+    // Close modal on backdrop click
+    window.addEventListener("click", e => {
+      if (e.target === modal) {
+        modal.style.display = "none";
+        tempEntry = null;
+      }
+    });
+
+    // Toggle clusters
+    toggleClustersBtn.addEventListener("click", () => {
+      clustersEnabled = !clustersEnabled;
+      toggleClustersBtn.classList.toggle("active", clustersEnabled);
+      toggleClustersBtn.textContent = `Clusters: ${clustersEnabled ? "On" : "Off"}`;
+      refreshMap();
+    });
+
+    // Toggle path
+    togglePathBtn.addEventListener("click", () => {
+      pathEnabled = !pathEnabled;
+      togglePathBtn.classList.toggle("active", pathEnabled);
+      togglePathBtn.textContent = `Parcours: ${pathEnabled ? "On" : "Off"}`;
+      refreshMap();
+    });
+
+ 
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js")
+      .then(() => console.log("Service Worker enregistré"))
+      .catch(err => console.error("Erreur SW:", err));
+  }
+
+ </script>
+
+</body>
+</html>
+
