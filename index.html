@@ -2,7 +2,8 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Inscription Firebase</title>
+  <title>Inscription / Connexion</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -10,14 +11,17 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
     }
     .form-container {
       background: #fff;
-      padding: 30px;
-      border-radius: 8px;
+      padding: 25px;
+      border-radius: 10px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      width: 350px;
+      width: 100%;
+      max-width: 400px;
     }
     h2 {
       text-align: center;
@@ -26,37 +30,58 @@
     }
     label {
       display: block;
-      margin-top: 10px;
+      margin-top: 12px;
       font-weight: bold;
       color: #555;
     }
     input {
-      width: 95%;
-      padding: 10px;
-      margin-top: 5px;
+      width: 94%;
+      padding: 12px;
+      margin-top: 6px;
       border: 1px solid #ccc;
-      border-radius: 5px;
+      border-radius: 6px;
+      font-size: 16px;
     }
     button {
       margin-top: 20px;
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       background: #4CAF50;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
       font-size: 16px;
       cursor: pointer;
+      transition: background 0.3s ease;
     }
-    button:hover {
-      background: #45a049;
+    button:hover { background: #45a049; }
+    .toggle-link {
+      text-align: center;
+      margin-top: 15px;
+      color: #007BFF;
+      cursor: pointer;
+    }
+
+    /* Loader circulaire */
+    .loader {
+      display: none;
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #4CAF50;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     /* Toast notification */
     .toast {
       visibility: hidden;
       min-width: 250px;
-      margin-left: -125px;
       background-color: #333;
       color: #fff;
       text-align: center;
@@ -68,6 +93,7 @@
       bottom: 30px;
       font-size: 15px;
       opacity: 0;
+      transform: translateX(-50%);
       transition: opacity 0.5s, bottom 0.5s;
     }
     .toast.show {
@@ -75,17 +101,18 @@
       opacity: 1;
       bottom: 50px;
     }
-    .toast.success {
-      background-color: #4CAF50;
-    }
-    .toast.error {
-      background-color: #f44336;
+    .toast.success { background-color: #4CAF50; }
+    .toast.error { background-color: #f44336; }
+
+    @media (max-width: 480px) {
+      .form-container { padding: 20px; }
+      input, button { font-size: 14px; padding: 10px; }
     }
   </style>
 </head>
 <body>
   <div class="form-container">
-    <h2>Inscription</h2>
+    <h2 id="formTitle">Inscription</h2>
     <form id="signupForm">
       <label for="nom">Nom</label>
       <input type="text" id="nom" name="nom" required>
@@ -98,15 +125,27 @@
 
       <button type="submit">S'inscrire</button>
     </form>
+
+    <form id="loginForm" style="display:none;">
+      <label for="loginEmail">Email</label>
+      <input type="email" id="loginEmail" name="loginEmail" required>
+
+      <label for="loginPassword">Mot de passe</label>
+      <input type="password" id="loginPassword" name="loginPassword" required>
+
+      <button type="submit">Se connecter</button>
+    </form>
+
+    <div class="toggle-link" id="toggleForm">Déjà inscrit ? Se connecter</div>
+    <div class="loader" id="loader"></div>
   </div>
 
-  <!-- Toast container -->
   <div id="toast" class="toast"></div>
 
   <!-- Script Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-    import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+    import { getDatabase, ref, push, get, child } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCK0a0CyZveptNj1x6JKWBO800lWBsM5Uc",
@@ -122,31 +161,78 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const form = document.getElementById('signupForm');
+    const signupForm = document.getElementById('signupForm');
+    const loginForm = document.getElementById('loginForm');
+    const toggleForm = document.getElementById('toggleForm');
+    const formTitle = document.getElementById('formTitle');
+    const loader = document.getElementById('loader');
     const toast = document.getElementById('toast');
 
     function showToast(message, type="success") {
       toast.textContent = message;
       toast.className = "toast show " + type;
-      setTimeout(() => {
-        toast.className = toast.className.replace("show", "");
-      }, 3000);
+      setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
     }
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const nom = document.getElementById('nom').value;
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-
-      try {
-        await push(ref(db, 'users'), { nom, email, password });
-        showToast(" Utilisateur inscrit avec succès !", "success");
-        form.reset();
-      } catch (err) {
-        showToast(" Erreur lors de l'inscription : " + err, "error");
+    toggleForm.addEventListener('click', () => {
+      if (signupForm.style.display === "none") {
+        signupForm.style.display = "block";
+        loginForm.style.display = "none";
+        formTitle.textContent = "Inscription";
+        toggleForm.textContent = "Déjà inscrit ? Se connecter";
+      } else {
+        signupForm.style.display = "none";
+        loginForm.style.display = "block";
+        formTitle.textContent = "Connexion";
+        toggleForm.textContent = "Pas encore inscrit ? S'inscrire";
       }
+    });
+
+    // Inscription
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loader.style.display = "block";
+      try {
+        const nom = document.getElementById('nom').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        await push(ref(db, 'users'), { nom, email, password });
+        showToast(" Inscription réussie !", "success");
+        signupForm.reset();
+      } catch (err) {
+        showToast(" Erreur inscription : " + err, "error");
+      }
+      loader.style.display = "none";
+    });
+
+    // Connexion (simple vérification dans la DB)
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loader.style.display = "block";
+      try {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        // Vérification basique : recherche dans la DB
+        const snapshot = await get(ref(db, 'users'));
+        let found = false;
+        snapshot.forEach(childSnap => {
+          const user = childSnap.val();
+          if (user.email === email && user.password === password) {
+            found = true;
+          }
+        });
+
+        if (found) {
+          showToast(" Connexion réussie !", "success");
+          setTimeout(() => { window.location.href = "welcome.html"; }, 1500);
+        } else {
+          showToast("Email ou mot de passe incorrect", "error");
+        }
+      } catch (err) {
+        showToast(" Erreur connexion : " + err, "error");
+      }
+      loader.style.display = "none";
     });
   </script>
 </body>
