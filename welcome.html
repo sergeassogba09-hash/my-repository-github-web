@@ -2,80 +2,102 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Welcome</title>
+  <title>Liste des profils</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #4CAF50, #2E8B57);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      flex-direction: column;
-      color: #fff;
-      text-align: center;
-    }
-
-    h1 {
-      font-size: 3em;
-      animation: fadeInDown 2s ease-in-out;
-      margin-bottom: 20px;
-    }
-
-    @keyframes fadeInDown {
-      from { opacity: 0; transform: translateY(-50px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    img {
-      width: 220px;
-      max-width: 80%;
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      animation: zoomIn 2s ease-in-out;
-    }
-
-    @keyframes zoomIn {
-      from { transform: scale(0.5); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
-    }
-
-    button {
-      margin-top: 30px;
-      padding: 14px 24px;
-      background: #fff;
-      color: #4CAF50;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      cursor: pointer;
-      transition: background 0.3s ease, color 0.3s ease;
-    }
-
-    button:hover {
-      background: #4CAF50;
-      color: #fff;
-    }
-
-    @media (max-width: 480px) {
-      h1 { font-size: 2em; }
-      img { width: 150px; }
-      button { font-size: 14px; padding: 10px 18px; }
-    }
+    body { margin: 0; font-family: 'Open Sans', sans-serif; background: #f9f9f9; min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+    .wrap { width: 100%; max-width: 640px; padding: 20px; }
+    .profile-list { background: #fff; border-radius: 12px; box-shadow: 0 6px 16px rgba(0,0,0,0.08); padding: 20px; }
+    .title { text-align: center; font-weight: 600; color: #333; margin-bottom: 16px; }
+    .profile-item { display: flex; align-items: center; background: #fff; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #eee; }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; background: #3498db; color: #fff; font-weight: 600; display: flex; align-items: center; justify-content: center; margin-right: 12px; }
+    .profile-info { flex: 1; }
+    .profile-info strong { display: block; color: #222; font-size: 16px; }
+    .profile-info span { display: block; color: #777; font-size: 14px; }
+    .actions { display: flex; justify-content: center; margin-top: 16px; }
+    .btn { background: #3498db; color: #fff; border: none; border-radius: 8px; padding: 12px 16px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .btn:hover { background: #2980b9; }
+    .loader { border: 6px solid #f3f3f3; border-top: 6px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
+    @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+    @media (max-width: 480px) { .wrap { padding: 12px; } .profile-item { padding: 10px; } .btn { font-size: 14px; padding: 10px 12px; } }
   </style>
 </head>
 <body>
-  <h1>✨ Welcome ✨</h1>
-  <img src="https://picsum.photos/400/300" alt="Image de bienvenue">
-  <button onclick="logout()">Déconnexion</button>
+  <div class="wrap">
+    <div class="title">Utilisateurs inscrits</div>
+    <div id="loader" class="loader"></div>
+    <div class="profile-list" id="profilesContainer"></div>
+    <div class="actions">
+      <button id="logoutBtn" class="btn">Déconnexion</button>
+    </div>
+  </div>
 
-  <script>
-    function logout() {
-      // Redirection vers la page principale
-      window.location.href = "index.html";
+  <!-- Firebase SDK (ES Modules via CDN) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCK0a0CyZveptNj1x6JKWBO800lWBsM5Uc",
+      authDomain: "inscription-8ff93.firebaseapp.com",
+      databaseURL: "https://inscription-8ff93-default-rtdb.firebaseio.com",
+      projectId: "inscription-8ff93",
+      storageBucket: "inscription-8ff93.firebasestorage.app",
+      messagingSenderId: "318298371779",
+      appId: "1:318298371779:web:1da0a0386663cf5198d476",
+      measurementId: "G-3BSF2CHNB2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    async function loadProfiles() {
+      const loader = document.getElementById('loader');
+      const container = document.getElementById('profilesContainer');
+      loader.style.display = "block";
+      container.innerHTML = "";
+
+      try {
+        const snapshot = await get(ref(db, 'users'));
+        loader.style.display = "none";
+
+        if (snapshot.exists()) {
+          snapshot.forEach(childSnap => {
+            const user = childSnap.val();
+            const item = document.createElement("div");
+            item.className = "profile-item";
+
+            const avatar = document.createElement("div");
+            avatar.className = "avatar";
+            avatar.textContent = user.nom ? user.nom.charAt(0).toUpperCase() : "?";
+
+            const info = document.createElement("div");
+            info.className = "profile-info";
+            info.innerHTML = `<strong>${user.nom || "Nom inconnu"}</strong><span>${user.email || ""}</span>`;
+
+            item.appendChild(avatar);
+            item.appendChild(info);
+            container.appendChild(item);
+          });
+        } else {
+          container.innerHTML = "<p>Aucun utilisateur inscrit pour le moment.</p>";
+        }
+      } catch (err) {
+        loader.style.display = "none";
+        container.innerHTML = "<p>⚠️ Erreur lors du chargement des profils.</p>";
+      }
     }
+
+    loadProfiles();
+
+    // Déconnexion robuste
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      window.location.href = "./index.html"; // même dossier
+      // Pour un déploiement: window.location.href = "https://ton-domaine/index.html";
+    });
   </script>
 </body>
 </html>
