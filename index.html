@@ -2,112 +2,152 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>GeoCapture</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon.png">
+  <title>Inscription Firebase</title>
   <style>
-    body { font-family:"Segoe UI",Arial,sans-serif; margin:0; padding:0; background:#f5f7fa; }
-    header { background:#2c3e50; color:white; padding:15px; text-align:center; }
-    nav { display:flex; gap:10px; margin:10px; }
-    nav a { padding:8px 12px; background:#2c3e50; color:white; border-radius:4px; text-decoration:none; }
-    nav a:hover { background:#34495e; }
-    main { width:100%; max-width:900px; margin:auto; padding:15px; }
-    #gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; margin-top:20px; }
-    .photo-card { display:flex; flex-direction:column; background:white; border:1px solid #ddd; border-radius:6px; padding:10px; }
-    .photo-card img { width:100%; height:auto; object-fit:cover; border-radius:4px; margin-bottom:8px; }
-    .photo-info { text-align:left; font-size:0.85em; margin-bottom:8px; }
-    .delete-btn { background:#e74c3c; border:none; color:white; padding:6px 10px; border-radius:4px; cursor:pointer; }
-    .delete-btn:hover { background:#c0392b; }
-    #clearAll { background:#c0392b; color:white; border:none; border-radius:4px; padding:10px 15px; margin-bottom:15px; cursor:pointer; }
-    #clearAll:hover { background:#a93226; }
-
-    /* Bouton flottant vers la carte */
-    #mapBtn {
-      position:fixed;
-      bottom:20px;
-      right:20px;
-      z-index:2000;
-      background:#2c3e50;
-      color:white;
-      border:none;
-      border-radius:50%;
-      width:60px;
-      height:60px;
-      font-size:1.5em;
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      text-decoration:none;
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-    #mapBtn:hover { background:#34495e; }
+    .form-container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 350px;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+      font-weight: bold;
+      color: #555;
+    }
+    input {
+      width: 95%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #45a049;
+    }
+
+    /* Toast notification */
+    .toast {
+      visibility: hidden;
+      min-width: 250px;
+      margin-left: -125px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 8px;
+      padding: 16px;
+      position: fixed;
+      z-index: 1;
+      left: 50%;
+      bottom: 30px;
+      font-size: 15px;
+      opacity: 0;
+      transition: opacity 0.5s, bottom 0.5s;
+    }
+    .toast.show {
+      visibility: visible;
+      opacity: 1;
+      bottom: 50px;
+    }
+    .toast.success {
+      background-color: #4CAF50;
+    }
+    .toast.error {
+      background-color: #f44336;
+    }
   </style>
 </head>
 <body>
-  <header>HOME</header>
-  <main>
-    <button id="clearAll">🗑️ Tout effacer</button>
-    <div id="gallery"></div>
-  </main>
+  <div class="form-container">
+    <h2>Inscription</h2>
+    <form id="signupForm">
+      <label for="nom">Nom</label>
+      <input type="text" id="nom" name="nom" required>
 
-  <!-- Bouton flottant vers la carte -->
-  <a href="map.html" id="mapBtn">🗺️</a>
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required>
 
-  <script>
-    let savedData = JSON.parse(localStorage.getItem("captures")) || [];
-    const gallery = document.getElementById("gallery");
-    const clearAllBtn = document.getElementById("clearAll");
+      <label for="password">Mot de passe</label>
+      <input type="password" id="password" name="password" required>
 
-    function refreshGallery() {
-      gallery.innerHTML = "";
-      if (savedData.length === 0) {
-        gallery.innerHTML = "<p>Aucune photo enregistrée.</p>";
-        return;
-      }
-      savedData.forEach((d, index) => {
-        const card = document.createElement("div");
-        card.className = "photo-card";
-        card.innerHTML = `
-          <img src="${d.image}" alt="${d.name}">
-          <div class="photo-info">
-            <b>${d.name}</b><br>${d.date}<br>
-            ${d.lat != null ? `[${d.lat.toFixed(4)}, ${d.lng.toFixed(4)}]` : "Coordonnées indisponibles"}
-          </div>
-          <button class="delete-btn" data-index="${index}">Supprimer</button>
-        `;
-        gallery.appendChild(card);
-      });
+      <button type="submit">S'inscrire</button>
+    </form>
+  </div>
 
-      document.querySelectorAll(".delete-btn").forEach(btn => {
-        btn.addEventListener("click", e => {
-          const idx = Number(e.target.getAttribute("data-index"));
-          savedData.splice(idx, 1);
-          localStorage.setItem("captures", JSON.stringify(savedData));
-          refreshGallery();
-        });
-      });
+  <!-- Toast container -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Script Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+    import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCK0a0CyZveptNj1x6JKWBO800lWBsM5Uc",
+      authDomain: "inscription-8ff93.firebaseapp.com",
+      databaseURL: "https://inscription-8ff93-default-rtdb.firebaseio.com",
+      projectId: "inscription-8ff93",
+      storageBucket: "inscription-8ff93.firebasestorage.app",
+      messagingSenderId: "318298371779",
+      appId: "1:318298371779:web:1da0a0386663cf5198d476",
+      measurementId: "G-3BSF2CHNB2"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const form = document.getElementById('signupForm');
+    const toast = document.getElementById('toast');
+
+    function showToast(message, type="success") {
+      toast.textContent = message;
+      toast.className = "toast show " + type;
+      setTimeout(() => {
+        toast.className = toast.className.replace("show", "");
+      }, 3000);
     }
 
-    clearAllBtn.addEventListener("click", () => {
-      if (confirm("Voulez-vous vraiment tout effacer ?")) {
-        savedData = [];
-        localStorage.removeItem("captures");
-        refreshGallery();
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const nom = document.getElementById('nom').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        await push(ref(db, 'users'), { nom, email, password });
+        showToast(" Utilisateur inscrit avec succès !", "success");
+        form.reset();
+      } catch (err) {
+        showToast(" Erreur lors de l'inscription : " + err, "error");
       }
     });
-
-    refreshGallery();
   </script>
-  <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("/sw.js")
-        .catch(console.error);
-    });
-  }
-</script>
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#2c3e50">
 </body>
 </html>
