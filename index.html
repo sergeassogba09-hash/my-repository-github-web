@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Medlight Mobile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
+  <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d6efd">
+<link rel="icon" href="icon1.png">
+<link rel="apple-touch-icon" href="icon1.png">
+</head>
+
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: sans-serif;
+}
+
+#map {
+  height: 100vh;
+}
+
+a{
+  text-decoration: none;
+}
+
+/* Boutons flottants */
+.btn-float {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  background: #0d6efd;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  z-index: 10000;
+  cursor: pointer;
+}
+.btn-gallery {
+  right: 86px;
+  background: #198754;
+}
+
+/* Barre de filtre */
+.filter-bar {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10000;
+  background: #fff;
+  padding: 6px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.filter-bar select {
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 0.9em;
+}
+
+/* Modals */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+}
+.modal-content {
+  background: #fff;
+  padding: 14px;
+  border-radius: 10px;
+  width: 95%;
+  max-width: 100%;
+  max-height: 90vh;       /* limite la hauteur du modal */
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;       /* permet le scroll si contenu trop grand */
+}
+.modal-content h3 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+}
+.modal-content input,
+.modal-content select {
+  width: 95%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-size: 1em;
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-top: 10px;
+  position: sticky;       /* reste visible en bas */
+  bottom: 0;
+  background: #fff;
+  padding-top: 8px;
+}
+.btn {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.btn-primary {
+  background: #0d6efd;
+  color: #fff;
+}
+.btn-secondary {
+  background: #eee;
+}
+
+/* Vidéo et image preview */
+video, #previewImg {
+  width: 100%;
+  max-height: 60vh;       /* limite la taille de la vidéo */
+  border-radius: 8px;
+  margin-bottom: 8px;
+  object-fit: contain;    /* garde les proportions */
+}
+
+/* Toast */
+#toastContainer {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 10002;
+}
+.toast {
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-top: 6px;
+  font-size: 0.9em;
+}
+/* Légende */
+#legend {
+  position: fixed;
+  bottom: 80px;   /* au-dessus des boutons flottants */
+  left: 12px;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  font-size: 0.85em;
+  z-index: 10000;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot.red { background: #ff0000; }
+.dot.blue { background: #0000ff; }
+.dot.green { background: #00aa00; }
+.dot.orange { background: #ff8800; }
+.dot.purple { background: #800080; }
+
+/* Bouton toggle légende */
+.btn-legend {
+  position: fixed;
+  bottom: 130px;   /* juste au-dessus de la légende */
+  left: 12px;
+  background: #0d6efd;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  z-index: 10001;
+  cursor: pointer;
+}
+
+</style>
+<body>
+
+<div id="map"></div>
+<!-- Légende -->
+<div id="legend">
+  <span class="legend-item"><span class="dot red"></span> USP1</span>
+  <span class="legend-item"><span class="dot blue"></span> USP2</span>
+  <span class="legend-item"><span class="dot green"></span> Infirmerie</span>
+  <span class="legend-item"><span class="dot orange"></span> Hôpital1</span>
+  <span class="legend-item"><span class="dot purple"></span> Hôpital2</span>
+</div>
+<button id="toggleLegend" class="btn-legend">ℹ️</button>
+
+<!-- Barre de filtre -->
+<div class="filter-bar">
+  <select id="filterType">
+    <option value="all">Tous</option>
+    <option value="USP1">USP1</option>
+    <option value="USP2">USP2</option>
+    <option value="Infirmerie">Infirmerie</option>
+    <option value="Hôpital1">Hôpital1</option>
+    <option value="Hôpital2">Hôpital2</option>
+  </select>
+</div>
+
+<!-- Boutons flottants -->
+<button id="takePhoto" class="btn-float" title="Ajouter">+</button>
+<a href="save.html" class="btn-float btn-gallery" title="Galerie">📂</a>
+<!-- Add in index.html body -->
+<button id="installPWA" style="position:fixed; bottom:20px; right:20px; padding:10px 12px; border:none; border-radius:8px; background:#0d6efd; color:#fff; box-shadow:0 2px 6px rgba(0,0,0,.2); display:none;">
+  Installer
+</button>
+
+<!-- Formulaire -->
+<div id="formModal" class="modal">
+  <div class="modal-content">
+    <h3>Nouveau centre</h3>
+    <form id="infoForm">
+      <input type="text" id="centreName" placeholder="Nom du centre" required>
+      <select id="centreType" required>
+        <option value="">Type de centre</option>
+        <option value="USP1">USP1</option>
+        <option value="USP2">USP2</option>
+        <option value="Infirmerie">Infirmerie</option>
+        <option value="Hôpital1">Hôpital1</option>
+        <option value="Hôpital2">Hôpital2</option>
+      </select>
+      <div class="modal-actions">
+        <button type="button" id="cancelForm" class="btn btn-secondary">Annuler</button>
+        <button type="submit" class="btn btn-primary">Continuer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Capture caméra -->
+<div id="captureModal" class="modal">
+  <div class="modal-content">
+    <h3>Capture</h3>
+    <video id="video" autoplay playsinline></video>
+    <div class="modal-actions">
+      <button id="closeCapture" class="btn btn-secondary">Fermer</button>
+      <button id="captureBtn" class="btn btn-primary">Capturer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Métadonnées -->
+<div id="metaModal" class="modal">
+  <div class="modal-content">
+    <h3>Métadonnées</h3>
+    <img id="previewImg" src="" alt="Prévisualisation">
+    <pre id="metaData"></pre>
+    <div class="modal-actions">
+      <button id="okBtn" class="btn btn-primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+<script>
+
+/* Carte avec limite de dézoom */
+/* Carte avec limite de dézoom */
+const map = L.map("map", { minZoom: 2, maxZoom: 18 }).setView([0,0], 2);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+const clusterGroup = L.markerClusterGroup();
+map.addLayer(clusterGroup);
+
+let savedData = JSON.parse(localStorage.getItem("captures")) || [];
+
+/* Fonction pour choisir la couleur selon le type */
+function getColor(type){
+  switch(type){
+    case "USP1": return "#ff0000";   // rouge
+    case "USP2": return "#0000ff";   // bleu
+    case "Infirmerie": return "#00aa00"; // vert
+    case "Hôpital1": return "#ff8800";   // orange
+    case "Hôpital2": return "#800080";   // violet
+    default: return "#555";          // gris par défaut
+  }
+}
+
+function refreshMap(filter="all"){
+  clusterGroup.clearLayers();
+  savedData.forEach(d=>{
+    if(d.lat!=null && d.lng!=null && (filter==="all" || d.type===filter)){
+      const marker = L.circleMarker([d.lat,d.lng], {
+        radius: 8,                // taille du point
+        fillColor: getColor(d.type),
+        color: "#fff",            // bordure blanche
+        weight: 2,                // épaisseur de la bordure
+        opacity: 1,
+        fillOpacity: 0.9
+      }).bindPopup(`<b>${d.name}</b><br>${d.type}<br>${d.date}`);
+      clusterGroup.addLayer(marker);
+    }
+  });
+}
+refreshMap();
+
+/* Filtre */
+document.getElementById("filterType").onchange = e => refreshMap(e.target.value);
+
+/* Modals & capture */
+const takePhotoBtn=document.getElementById("takePhoto");
+const formModal=document.getElementById("formModal");
+const captureModal=document.getElementById("captureModal");
+const metaModal=document.getElementById("metaModal");
+const video=document.getElementById("video");
+const captureBtn=document.getElementById("captureBtn");
+const closeCaptureBtn=document.getElementById("closeCapture");
+const previewImg=document.getElementById("previewImg");
+const metaData=document.getElementById("metaData");
+const okBtn=document.getElementById("okBtn");
+const toastContainer=document.getElementById("toastContainer");
+
+let stream=null; let formData={}; let pendingEntry=null;
+
+takePhotoBtn.onclick=()=>formModal.style.display="flex";
+document.getElementById("cancelForm").onclick=()=>formModal.style.display="none";
+
+document.getElementById("infoForm").onsubmit=async e=>{
+  e.preventDefault();
+  formData.name=document.getElementById("centreName").value.trim();
+  formData.type=document.getElementById("centreType").value;
+  if(!formData.name||!formData.type)return;
+  formModal.style.display="none";
+  captureModal.style.display="flex";
+  await startCamera();
+};
+
+async function startCamera(){
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+    video.srcObject=stream;
+  }catch{
+    stream=await navigator.mediaDevices.getUserMedia({video:true});
+    video.srcObject=stream;
+  }
+}
+function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}}
+
+closeCaptureBtn.onclick=()=>{captureModal.style.display="none";stopCamera();};
+
+captureBtn.onclick=()=>{
+  const canvas=document.createElement("canvas");
+  canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+  canvas.getContext("2d").drawImage(video,0,0);
+  const imageData=canvas.toDataURL("image/png");
+  const dateStr=new Date().toLocaleString();
+  pendingEntry={id:Date.now().toString(),name:formData.name,type:formData.type,date:dateStr,lat:null,lng:null,image:imageData};
+
+  captureModal.style.display="none";
+  stopCamera();
+  previewImg.src=imageData;
+  metaData.textContent=`Nom: ${pendingEntry.name}\nType: ${pendingEntry.type}\nDate: ${pendingEntry.date}\nCoord: en cours...`;
+  metaModal.style.display="flex";
+
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        pendingEntry.lat=pos.coords.latitude;
+        pendingEntry.lng=pos.coords.longitude;
+        metaData.textContent=`Nom: ${pendingEntry.name}\nType: ${pendingEntry.type}\nDate: ${pendingEntry.date}\nCoord: ${pendingEntry.lat}, ${pendingEntry.lng}`;
+      },
+      err=>{
+        metaData.textContent=`Nom: ${pendingEntry.name}\nType: ${pendingEntry.type}\nDate: ${pendingEntry.date}\nCoord: indisponibles (${err.message})`;
+      }
+    );
+  } else {
+    metaData.textContent=`Nom: ${pendingEntry.name}\nType: ${pendingEntry.type}\nDate: ${pendingEntry.date}\nCoord: non supportées`;
+  }
+};
+
+/* Validation finale : enregistrement avec ou sans métadonnées */
+okBtn.onclick = () => {
+  if (pendingEntry) {
+    savedData.push(pendingEntry);
+    localStorage.setItem("captures", JSON.stringify(savedData));
+    refreshMap(document.getElementById("filterType").value);
+    showToast("Photo enregistrée.");
+    pendingEntry = null;
+  }
+  metaModal.style.display = "none"; // ferme toujours le modal
+};
+
+/* Toast */
+function showToast(msg) {
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = msg;
+  toastContainer.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+/* Toggle légende */
+const legend = document.getElementById("legend");
+const toggleLegendBtn = document.getElementById("toggleLegend");
+
+toggleLegendBtn.onclick = () => {
+  if (legend.style.display === "none" || legend.style.display === "") {
+    legend.style.display = "flex";   // affiche la légende
+  } else {
+    legend.style.display = "none";   // cache la légende
+  }
+};
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+</script>
+
+<script>
+let deferredPrompt;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const btn = document.getElementById("installPWA");
+  btn.style.display = "block";
+  btn.onclick = async () => {
+    btn.style.display = "none";
+    await deferredPrompt.prompt();
+    deferredPrompt = null;
+  };
+});
+window.addEventListener("appinstalled", () => {
+  const btn = document.getElementById("installPWA");
+  if (btn) btn.style.display = "none";
+});
+</script>
+
+</body>
+</html>

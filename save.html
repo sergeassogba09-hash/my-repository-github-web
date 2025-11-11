@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Galerie Mobile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d6efd">
+  <link rel="icon" href="icon1.png">
+  <style>
+    body { margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding:12px; background:#f5f5f5; }
+    h3 { margin: 6px 0 8px; text-align:center; color:#0d6efd; }
+    #counter { text-align:center; margin-bottom:16px; font-size:0.95em; color:#555; }
+    select { width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; margin-bottom:16px; font-size:1em; }
+    .photo-card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-bottom:16px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    img { width:100%; border-radius:8px; margin-bottom:10px; }
+    .meta { font-size:0.9em; color:#333; margin-bottom:10px; line-height:1.4; }
+    .actions { display:flex; flex-wrap:wrap; gap:8px; }
+    button { flex:1; padding:10px; border:none; border-radius:8px; cursor:pointer; font-size:0.9em; }
+    .download { background:#0d6efd; color:#fff; }
+    .delete { background:#dc3545; color:#fff; }
+    .zip { background:#198754; color:#fff; }
+    .back { display:block; text-align:center; margin-top:16px; text-decoration:none; color:#0d6efd; font-weight:bold; }
+    #downloadAll { width:100%; margin-bottom:16px; background:#6f42c1; color:#fff; }
+    a{
+      text-decoration: none;
+      margin-top: 16px;
+      margin-bottom: 20px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+<h3>Galerie</h3>
+<div id="counter"></div>
+<a href="index.html" class="back">↩ Retour à la carte</a>
+<a href="guide.html" class="back">↩ Guide utilisateur</a>
+<select id="filterType">
+  <option value="all">Tous</option>
+  <option value="USP1">USP1</option>
+  <option value="USP2">USP2</option>
+  <option value="Infirmerie">Infirmerie</option>
+  <option value="Hôpital1">Hôpital1</option>
+  <option value="Hôpital2">Hôpital2</option>
+</select>
+
+<button id="downloadAll">📦 Tout télécharger en ZIP</button>
+
+
+<div id="gallery"></div>
+
+
+<!-- Librairie JSZip -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+let savedData = JSON.parse(localStorage.getItem("captures")) || [];
+const gallery = document.getElementById("gallery");
+const filterType = document.getElementById("filterType");
+const downloadAllBtn = document.getElementById("downloadAll");
+const counter = document.getElementById("counter");
+
+function refreshGallery(filter="all") {
+  gallery.innerHTML = "";
+  const list = filter === "all" ? savedData : savedData.filter(d => d.type === filter);
+
+  // compteur
+  counter.textContent = list.length > 0 
+    ? `${list.length} photo${list.length>1?"s":""} affichée${list.length>1?"s":""}` 
+    : "Aucune photo enregistrée";
+
+  if (list.length === 0) return;
+
+  list.forEach(d => {
+    const card = document.createElement("div");
+    card.className = "photo-card";
+    card.innerHTML = `
+      <img src="${d.image}" alt="${d.name}">
+      <div class="meta">
+        <b>${d.name}</b><br>
+        ${d.type}<br>
+        ${d.date}<br>
+        ${d.lat != null ? "["+d.lat.toFixed(4)+", "+d.lng.toFixed(4)+"]" : "Coordonnées indisponibles"}
+      </div>
+      <div class="actions">
+        <button class="download" data-id="${d.id}">Télécharger image</button>
+        <button class="zip" data-id="${d.id}">Télécharger ZIP</button>
+        <button class="delete" data-id="${d.id}">Supprimer</button>
+      </div>
+    `;
+    gallery.appendChild(card);
+  });
+
+  // supprimer
+  document.querySelectorAll(".delete").forEach(btn => {
+    btn.onclick = e => {
+      const id = e.target.getAttribute("data-id");
+      savedData = savedData.filter(x => x.id !== id);
+      localStorage.setItem("captures", JSON.stringify(savedData));
+      refreshGallery(filterType.value);
+    };
+  });
+
+  // télécharger image
+  document.querySelectorAll(".download").forEach(btn => {
+    btn.onclick = e => {
+      const id = e.target.getAttribute("data-id");
+      const photo = savedData.find(x => x.id === id);
+      const a = document.createElement("a");
+      a.href = photo.image;
+      a.download = (photo.name || "photo") + ".png";
+      a.click();
+    };
+  });
+
+  // télécharger ZIP individuel
+  document.querySelectorAll(".zip").forEach(btn => {
+    btn.onclick = async e => {
+      const id = e.target.getAttribute("data-id");
+      const photo = savedData.find(x => x.id === id);
+
+      const zip = new JSZip();
+      const imgData = photo.image.split(",")[1];
+      zip.file((photo.name || "photo") + ".png", imgData, {base64:true});
+      const metaText = 
+`Nom: ${photo.name}
+Type: ${photo.type}
+Date: ${photo.date}
+Coordonnées: ${photo.lat != null ? photo.lat+", "+photo.lng : "Indisponibles"}`;
+      zip.file((photo.name || "photo") + "_infos.txt", metaText);
+
+      const blob = await zip.generateAsync({type:"blob"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = (photo.name || "photo") + ".zip";
+      a.click();
+    };
+  });
+}
+
+// Télécharger toute la galerie en ZIP organisé par type
+downloadAllBtn.onclick = async () => {
+  if(savedData.length === 0){
+    alert("Aucune photo à télécharger.");
+    return;
+  }
+  const zip = new JSZip();
+  savedData.forEach(photo => {
+    const folder = zip.folder(photo.type || "Autres");
+    const imgData = photo.image.split(",")[1];
+    folder.file((photo.name || "photo") + ".png", imgData, {base64:true});
+    const metaText = 
+`Nom: ${photo.name}
+Type: ${photo.type}
+Date: ${photo.date}
+Coordonnées: ${photo.lat != null ? photo.lat+", "+photo.lng : "Indisponibles"}`;
+    folder.file((photo.name || "photo") + "_infos.txt", metaText);
+  });
+  const blob = await zip.generateAsync({type:"blob"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "Galerie_Medlight.zip";
+  a.click();
+};
+
+filterType.onchange = () => refreshGallery(filterType.value);
+refreshGallery();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
