@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Medlight Mobile</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="style.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
@@ -12,6 +11,7 @@
   <meta name="theme-color" content="#0d6efd">
   <link rel="icon" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -25,7 +25,7 @@
   <span class="legend-item"><span class="dot orange"></span> Hôpital1</span>
   <span class="legend-item"><span class="dot purple"></span> Hôpital2</span>
 </div>
-<button id="toggleLegend" class="btn-legend">ℹ️</button>
+<button id="toggleLegend" class="btn-legend" aria-label="Afficher/masquer légende">ℹ️</button>
 
 <!-- Barre de filtre -->
 <div class="filter-bar">
@@ -40,8 +40,8 @@
 </div>
 
 <!-- Boutons flottants -->
-<button id="takePhoto" class="btn-float" title="Ajouter">+</button>
-<a href="save.html" class="btn-float btn-gallery" title="Galerie">📂</a>
+<button id="takePhoto" class="btn-float" aria-label="Ajouter centre">+</button>
+<a href="save.html" class="btn-float btn-gallery" aria-label="Galerie">📂</a>
 <button id="installPWA" class="btn-install">Installer</button>
 
 <!-- Modals -->
@@ -59,8 +59,8 @@
         <option value="Hôpital2">Hôpital2</option>
       </select>
       <div class="modal-actions">
-        <button type="button" id="cancelForm" class="btn btn-secondary">Annuler</button>
-        <button type="submit" class="btn btn-primary">Continuer</button>
+        <button type="button" id="cancelForm">Annuler</button>
+        <button type="submit">Continuer</button>
       </div>
     </form>
   </div>
@@ -71,8 +71,8 @@
     <h3>Capture</h3>
     <video id="video" autoplay playsinline></video>
     <div class="modal-actions">
-      <button id="closeCapture" class="btn btn-secondary">Fermer</button>
-      <button id="captureBtn" class="btn btn-primary">Capturer</button>
+      <button id="closeCapture">Fermer</button>
+      <button id="captureBtn">Capturer</button>
     </div>
   </div>
 </div>
@@ -83,7 +83,7 @@
     <img id="previewImg" src="" alt="Prévisualisation">
     <pre id="metaData"></pre>
     <div class="modal-actions">
-      <button id="okBtn" class="btn btn-primary">OK</button>
+      <button id="okBtn">OK</button>
     </div>
   </div>
 </div>
@@ -126,6 +126,7 @@ function getColor(type){
 
 /* Rafraîchir carte */
 function refreshMap(filter="all"){
+  if (!db) return;
   const tx = db.transaction("captures", "readonly");
   const store = tx.objectStore("captures");
   const req = store.getAll();
@@ -196,6 +197,10 @@ closeCaptureBtn.onclick=()=>{
 };
 
 captureBtn.onclick=()=>{
+  if(video.videoWidth===0 || video.videoHeight===0){
+    alert("La caméra n'est pas encore prête.");
+    return;
+  }
   const canvas=document.createElement("canvas");
   canvas.width=video.videoWidth;canvas.height=video.videoHeight;
   canvas.getContext("2d").drawImage(video,0,0);
