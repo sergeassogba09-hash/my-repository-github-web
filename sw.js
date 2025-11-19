@@ -7,8 +7,7 @@ const APP_SHELL = [
   "./",
   "./index.html",
   "./save.html",
-  "./guide.html",
-  "./index.css",
+  "./style.css",
   "./manifest.json",
   "./offline.html",
   // libs
@@ -18,10 +17,10 @@ const APP_SHELL = [
   "https://unpkg.com/leaflet/dist/leaflet.js",
   "https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js",
   // icons
-  "./icon1.png",
-  "./icon2.png",
-  "./icon1.png",
-  "./icon2.png"
+  "./icon.png",
+  "./icon.png",
+  "./icon.png",
+  "./icon.png"
 ];
 
 // Install: pre-cache app shell
@@ -97,3 +96,4 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
