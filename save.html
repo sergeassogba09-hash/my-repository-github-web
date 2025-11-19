@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Medlight mobile</title>
+  <title>Medlight Mobile – Galerie</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0d6efd">
@@ -39,30 +39,6 @@
       z-index: 1000;
       cursor: pointer;
       text-decoration: none;
-    }
-
-    /* 📱 Mobile (max 480px) */
-    @media (max-width:480px){
-      .photo-card { padding:8px; }
-      .meta { font-size:0.8em; }
-      img { max-width:100%; height:auto; }
-      .actions { flex-direction:column; }
-      .actions button { width:100%; }
-      .btn-back { width:48px; height:48px; font-size:20px; }
-    }
-
-    /* 📲 Tablette (481px à 768px) */
-    @media (min-width:481px) and (max-width:768px){
-      .photo-card { max-width:600px; margin:auto; }
-      img { max-width:100%; height:auto; }
-      .actions button { font-size:0.85em; }
-    }
-
-    /* 💻 Desktop (min 769px) */
-    @media (min-width:769px){
-      .photo-card { max-width:700px; margin:auto; }
-      img { max-width:100%; height:auto; }
-      .actions button { font-size:0.9em; }
     }
   </style>
 </head>
@@ -104,6 +80,7 @@ request.onsuccess = e => { db = e.target.result; refreshGallery(); };
 request.onerror = e => { alert("Erreur IndexedDB : " + e.target.errorCode); };
 
 function getAllCaptures(callback) {
+  if (!db) return;
   const tx = db.transaction("captures", "readonly");
   const store = tx.objectStore("captures");
   const req = store.getAll();
@@ -139,6 +116,7 @@ function refreshGallery(filter="all") {
       gallery.appendChild(card);
     });
 
+    // Actions
     document.querySelectorAll(".delete").forEach(btn => {
       btn.onclick = e => {
         const id = e.target.getAttribute("data-id");
@@ -193,6 +171,16 @@ document.getElementById("folderInput").addEventListener("change", async (e) => {
   const files = e.target.files;
   if (!files.length) return;
 
+  let imageFile = null, textFile = null;
+  for (const f of files) {
+    if (f.name.toLowerCase().endsWith(".png")) imageFile = f;
+    else if (f.name.toLowerCase().endsWith(".txt")) textFile = f;
+  }
+  if (!imageFile || !textFile) {
+    alert("Le dossier doit contenir une image (.png) et un fichier texte (.txt).");
+    return;
+  }
+
   const readerImg = new FileReader();
   readerImg.onload = function(evtImg) {
     const imageBase64 = evtImg.target.result;
@@ -206,7 +194,7 @@ document.getElementById("folderInput").addEventListener("change", async (e) => {
         if (key && val) meta[key.trim()] = val.trim();
       });
 
-      const entry = {
+            const entry = {
         id: Date.now().toString() + Math.random(),
         name: meta.Nom || imageFile.name.replace(".png",""),
         type: meta.Type || "Autres",
@@ -256,7 +244,8 @@ Coordonnées: ${photo.lat != null ? photo.lat+", "+photo.lng : "Indisponibles"}`
 };
 
 /* Filtre */
-document.getElementById("filterType").onchange = () => refreshGallery(document.getElementById("filterType").value);
+document.getElementById("filterType").onchange = () => 
+  refreshGallery(document.getElementById("filterType").value);
 
 /* Service Worker pour PWA */
 if ("serviceWorker" in navigator) {
