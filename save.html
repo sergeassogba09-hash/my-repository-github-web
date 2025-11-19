@@ -2,16 +2,16 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Galerie Mobile</title>
+  <title>Medlight mobile</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0d6efd">
-  <link rel="icon" href="icon1.png">
+  <link rel="icon" href="icon.png">
   <style>
     body { margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding:12px; background:#f5f5f5; }
     h3 { margin: 6px 0 8px; text-align:center; color:#0d6efd; }
     #counter { text-align:center; margin-bottom:16px; font-size:0.95em; color:#555; }
-    select { width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; margin-bottom:16px; font-size:1em; }
+    select, input[type=file] { width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; margin-bottom:16px; font-size:1em; }
     .photo-card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-bottom:16px; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
     img { width:100%; border-radius:8px; margin-bottom:10px; }
     .meta { font-size:0.9em; color:#333; margin-bottom:10px; line-height:1.4; }
@@ -20,22 +20,60 @@
     .download { background:#0d6efd; color:#fff; }
     .delete { background:#dc3545; color:#fff; }
     .zip { background:#198754; color:#fff; }
-    .back { display:block; text-align:center; margin-top:16px; text-decoration:none; color:#0d6efd; font-weight:bold; }
     #downloadAll { width:100%; margin-bottom:16px; background:#6f42c1; color:#fff; }
-    a{
+    .btn-back {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      background: #0d6efd;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 56px;
+      height: 56px;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+      z-index: 1000;
+      cursor: pointer;
       text-decoration: none;
-      margin-top: 16px;
-      margin-bottom: 20px;
-      display: inline-block;
+    }
+
+    /* 📱 Mobile (max 480px) */
+    @media (max-width:480px){
+      .photo-card { padding:8px; }
+      .meta { font-size:0.8em; }
+      img { max-width:100%; height:auto; }
+      .actions { flex-direction:column; }
+      .actions button { width:100%; }
+      .btn-back { width:48px; height:48px; font-size:20px; }
+    }
+
+    /* 📲 Tablette (481px à 768px) */
+    @media (min-width:481px) and (max-width:768px){
+      .photo-card { max-width:600px; margin:auto; }
+      img { max-width:100%; height:auto; }
+      .actions button { font-size:0.85em; }
+    }
+
+    /* 💻 Desktop (min 769px) */
+    @media (min-width:769px){
+      .photo-card { max-width:700px; margin:auto; }
+      img { max-width:100%; height:auto; }
+      .actions button { font-size:0.9em; }
     }
   </style>
 </head>
 <body>
 
+<h3>Importer un dossier</h3>
+<input type="file" id="folderInput" webkitdirectory directory />
+
 <h3>Galerie</h3>
 <div id="counter"></div>
-<a href="index.html" class="back">↩ Retour à la carte</a>
-<a href="guide.html" class="back">↩ Guide utilisateur</a>
+
 <select id="filterType">
   <option value="all">Tous</option>
   <option value="USP1">USP1</option>
@@ -47,126 +85,180 @@
 
 <button id="downloadAll">📦 Tout télécharger en ZIP</button>
 
-
 <div id="gallery"></div>
 
+<a href="index.html" class="btn-back" title="Retour à la carte">↩</a>
 
-<!-- Librairie JSZip -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <script>
-let savedData = JSON.parse(localStorage.getItem("captures")) || [];
-const gallery = document.getElementById("gallery");
-const filterType = document.getElementById("filterType");
-const downloadAllBtn = document.getElementById("downloadAll");
-const counter = document.getElementById("counter");
+let db;
+const request = indexedDB.open("MedlightDB", 1);
+request.onupgradeneeded = e => {
+  db = e.target.result;
+  if (!db.objectStoreNames.contains("captures")) {
+    db.createObjectStore("captures", { keyPath: "id" });
+  }
+};
+request.onsuccess = e => { db = e.target.result; refreshGallery(); };
+request.onerror = e => { alert("Erreur IndexedDB : " + e.target.errorCode); };
+
+function getAllCaptures(callback) {
+  const tx = db.transaction("captures", "readonly");
+  const store = tx.objectStore("captures");
+  const req = store.getAll();
+  req.onsuccess = () => callback(req.result || []);
+}
 
 function refreshGallery(filter="all") {
-  gallery.innerHTML = "";
-  const list = filter === "all" ? savedData : savedData.filter(d => d.type === filter);
+  getAllCaptures(list => {
+    const gallery = document.getElementById("gallery");
+    gallery.innerHTML = "";
+    const filtered = filter === "all" ? list : list.filter(d => d.type === filter);
+    document.getElementById("counter").textContent = filtered.length > 0 
+      ? `${filtered.length} photo${filtered.length>1?"s":""} affichée${filtered.length>1?"s":""}` 
+      : "Aucune photo enregistrée";
 
-  // compteur
-  counter.textContent = list.length > 0 
-    ? `${list.length} photo${list.length>1?"s":""} affichée${list.length>1?"s":""}` 
-    : "Aucune photo enregistrée";
+    filtered.forEach(d => {
+      const card = document.createElement("div");
+      card.className = "photo-card";
+      card.innerHTML = `
+        <img src="${d.image}" alt="${d.name}">
+        <div class="meta">
+          <b>${d.name}</b><br>
+          ${d.type}<br>
+          ${d.date}<br>
+          ${d.lat != null ? "["+d.lat+", "+d.lng+"]" : "Coordonnées indisponibles"}
+        </div>
+        <div class="actions">
+          <button class="download" data-id="${d.id}">Télécharger image</button>
+          <button class="zip" data-id="${d.id}">Télécharger ZIP</button>
+          <button class="delete" data-id="${d.id}">Supprimer</button>
+        </div>
+      `;
+      gallery.appendChild(card);
+    });
 
-  if (list.length === 0) return;
+    document.querySelectorAll(".delete").forEach(btn => {
+      btn.onclick = e => {
+        const id = e.target.getAttribute("data-id");
+        const tx = db.transaction("captures", "readwrite");
+        tx.objectStore("captures").delete(id);
+        tx.oncomplete = () => refreshGallery(filterType.value);
+      };
+    });
 
-  list.forEach(d => {
-    const card = document.createElement("div");
-    card.className = "photo-card";
-    card.innerHTML = `
-      <img src="${d.image}" alt="${d.name}">
-      <div class="meta">
-        <b>${d.name}</b><br>
-        ${d.type}<br>
-        ${d.date}<br>
-        ${d.lat != null ? "["+d.lat.toFixed(4)+", "+d.lng.toFixed(4)+"]" : "Coordonnées indisponibles"}
-      </div>
-      <div class="actions">
-        <button class="download" data-id="${d.id}">Télécharger image</button>
-        <button class="zip" data-id="${d.id}">Télécharger ZIP</button>
-        <button class="delete" data-id="${d.id}">Supprimer</button>
-      </div>
-    `;
-    gallery.appendChild(card);
+    document.querySelectorAll(".download").forEach(btn => {
+      btn.onclick = e => {
+        const id = e.target.getAttribute("data-id");
+        const tx = db.transaction("captures", "readonly");
+        tx.objectStore("captures").get(id).onsuccess = evt => {
+          const photo = evt.target.result;
+          const a = document.createElement("a");
+          a.href = photo.image;
+          a.download = (photo.name || "photo") + ".png";
+          a.click();
+        };
+      };
+    });
+
+    document.querySelectorAll(".zip").forEach(btn => {
+      btn.onclick = async e => {
+        const id = e.target.getAttribute("data-id");
+        const tx = db.transaction("captures", "readonly");
+        tx.objectStore("captures").get(id).onsuccess = async evt => {
+          const photo = evt.target.result;
+          const zip = new JSZip();
+          const imgData = photo.image.split(",")[1];
+          zip.file((photo.name || "photo") + ".png", imgData, {base64:true});
+          const metaText = 
+`Nom: ${photo.name}
+Type: ${photo.type}
+Date: ${photo.date}
+Coordonnées: ${photo.lat != null ? photo.lat+", "+photo.lng : "Indisponibles"}`;
+          zip.file((photo.name || "photo") + "_infos.txt", metaText);
+          const blob = await zip.generateAsync({type:"blob"});
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = (photo.name || "photo") + ".zip";
+          a.click();
+        };
+      };
+    });
   });
+}
 
-  // supprimer
-  document.querySelectorAll(".delete").forEach(btn => {
-    btn.onclick = e => {
-      const id = e.target.getAttribute("data-id");
-      savedData = savedData.filter(x => x.id !== id);
-      localStorage.setItem("captures", JSON.stringify(savedData));
-      refreshGallery(filterType.value);
+/* Import dossier (image + txt) */
+document.getElementById("folderInput").addEventListener("change", async (e) => {
+  const files = e.target.files;
+  if (!files.length) return;
+
+  const readerImg = new FileReader();
+  readerImg.onload = function(evtImg) {
+    const imageBase64 = evtImg.target.result;
+
+    const readerTxt = new FileReader();
+    readerTxt.onload = function(evtTxt) {
+      const metaText = evtTxt.target.result;
+      let meta = {};
+      metaText.split("\n").forEach(line => {
+        const [key, val] = line.split(":");
+        if (key && val) meta[key.trim()] = val.trim();
+      });
+
+      const entry = {
+        id: Date.now().toString() + Math.random(),
+        name: meta.Nom || imageFile.name.replace(".png",""),
+        type: meta.Type || "Autres",
+        date: meta.Date || new Date().toLocaleString(),
+        lat: meta.Coordonnées ? meta.Coordonnées.split(",")[0].trim() : null,
+        lng: meta.Coordonnées ? meta.Coordonnées.split(",")[1].trim() : null,
+        image: imageBase64
+      };
+
+      const tx = db.transaction("captures", "readwrite");
+      tx.objectStore("captures").put(entry);
+      tx.oncomplete = () => {
+        alert("Importation réussie !");
+        refreshGallery();
+      };
     };
-  });
+    readerTxt.readAsText(textFile);
+  };
+  readerImg.readAsDataURL(imageFile);
+});
 
-  // télécharger image
-  document.querySelectorAll(".download").forEach(btn => {
-    btn.onclick = e => {
-      const id = e.target.getAttribute("data-id");
-      const photo = savedData.find(x => x.id === id);
-      const a = document.createElement("a");
-      a.href = photo.image;
-      a.download = (photo.name || "photo") + ".png";
-      a.click();
-    };
-  });
-
-  // télécharger ZIP individuel
-  document.querySelectorAll(".zip").forEach(btn => {
-    btn.onclick = async e => {
-      const id = e.target.getAttribute("data-id");
-      const photo = savedData.find(x => x.id === id);
-
-      const zip = new JSZip();
+/* ZIP global */
+document.getElementById("downloadAll").onclick = async () => {
+  getAllCaptures(async savedData => {
+    if(savedData.length === 0){
+      alert("Aucune photo à télécharger.");
+      return;
+    }
+    const zip = new JSZip();
+    savedData.forEach(photo => {
+      const folder = zip.folder(photo.type || "Autres");
       const imgData = photo.image.split(",")[1];
-      zip.file((photo.name || "photo") + ".png", imgData, {base64:true});
+      folder.file((photo.name || "photo") + ".png", imgData, {base64:true});
       const metaText = 
 `Nom: ${photo.name}
 Type: ${photo.type}
 Date: ${photo.date}
 Coordonnées: ${photo.lat != null ? photo.lat+", "+photo.lng : "Indisponibles"}`;
-      zip.file((photo.name || "photo") + "_infos.txt", metaText);
-
-      const blob = await zip.generateAsync({type:"blob"});
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = (photo.name || "photo") + ".zip";
-      a.click();
-    };
+      folder.file((photo.name || "photo") + "_infos.txt", metaText);
+    });
+    const blob = await zip.generateAsync({type:"blob"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "Galerie_Medlight.zip";
+    a.click();
   });
-}
-
-// Télécharger toute la galerie en ZIP organisé par type
-downloadAllBtn.onclick = async () => {
-  if(savedData.length === 0){
-    alert("Aucune photo à télécharger.");
-    return;
-  }
-  const zip = new JSZip();
-  savedData.forEach(photo => {
-    const folder = zip.folder(photo.type || "Autres");
-    const imgData = photo.image.split(",")[1];
-    folder.file((photo.name || "photo") + ".png", imgData, {base64:true});
-    const metaText = 
-`Nom: ${photo.name}
-Type: ${photo.type}
-Date: ${photo.date}
-Coordonnées: ${photo.lat != null ? photo.lat+", "+photo.lng : "Indisponibles"}`;
-    folder.file((photo.name || "photo") + "_infos.txt", metaText);
-  });
-  const blob = await zip.generateAsync({type:"blob"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "Galerie_Medlight.zip";
-  a.click();
 };
 
-filterType.onchange = () => refreshGallery(filterType.value);
-refreshGallery();
+/* Filtre */
+document.getElementById("filterType").onchange = () => refreshGallery(document.getElementById("filterType").value);
 
+/* Service Worker pour PWA */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch(() => {});
